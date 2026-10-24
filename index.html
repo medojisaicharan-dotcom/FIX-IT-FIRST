@@ -3,78 +3,1064 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fix It First — The Canvas Protocol</title>
-  <meta name="description" content="The Canvas Protocol Edition: Decision support for damaged items executed purely through Drag-and-Drop Action Zones. No standard action buttons.">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="style.css">
+  <title>Fix It First — The Canvas Protocol 🎨</title>
+  <meta name="description" content="Canvas Protocol: Drag data cards into Action Zones to analyze, repair, reuse, repurpose, replace, or recycle items. Zero standard buttons.">
+  <style>
+    /* ===== CSS VARIABLES ===== */
+    :root {
+      --bg: #0a0f0d;
+      --bg-surface: #111a15;
+      --bg-card: #162019;
+      --bg-elevated: #1c2b20;
+      --border: #1f3027;
+      --border-mid: #2a4035;
+      --border-hi: #3a5a47;
+      --text: #e8f5ec;
+      --text-muted: #7fa898;
+      --text-faint: #4a6b5a;
+      --em: #10b981;
+      --em-glow: rgba(16,185,129,0.25);
+      --shadow: 0 4px 20px rgba(0,0,0,0.4);
+      --shadow-drag: 0 20px 40px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.3);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-pill: 999px;
+    }
+    .light {
+      --bg: #f0fdf4;
+      --bg-surface: #ffffff;
+      --bg-card: #f8fffe;
+      --bg-elevated: #ecfdf5;
+      --border: #d1fae5;
+      --border-mid: #a7f3d0;
+      --border-hi: #6ee7b7;
+      --text: #064e3b;
+      --text-muted: #065f46;
+      --text-faint: #a7f3d0;
+      --em: #059669;
+      --em-glow: rgba(5,150,105,0.2);
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      --shadow-drag: 0 20px 40px rgba(0,0,0,0.15), 0 0 20px rgba(5,150,105,0.2);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .brand-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      background: linear-gradient(135deg, #10b981, #0d9488);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; box-shadow: 0 4px 12px rgba(16,185,129,0.4);
+    }
+    .brand-name { font-size: 16px; font-weight: 900; color: var(--text); }
+    .brand-sub { font-size: 11px; color: var(--text-muted); }
+    .badge {
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(168,85,247,.15); color: #c084fc; border: 1px solid rgba(168,85,247,.3);
+    }
+    .hdr-right { display: flex; align-items: center; gap: 8px; }
+    .icon-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--bg-card); border: 1px solid var(--border-mid);
+      color: var(--text); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: .2s;
+    }
+    .icon-btn:hover { border-color: var(--em); transform: scale(1.08); }
+    .live-dot {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--text-muted);
+      padding: 5px 12px; border-radius: 999px;
+      background: var(--bg-card); border: 1px solid var(--border);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--em); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      z-index: 9999; background: var(--bg-elevated); border: 1.5px solid var(--em);
+      color: var(--text); padding: 12px 24px; border-radius: 999px;
+      font-size: 13px; font-weight: 700; white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ===== MAIN CANVAS ===== */
+    main { max-width: 1280px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Protocol Banner */
+    .protocol-banner {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      padding: 14px 20px; border-radius: var(--radius);
+      background: rgba(16,185,129,.06); border: 1.5px solid rgba(16,185,129,.3);
+      margin-bottom: 24px;
+    }
+    .protocol-banner .left { display: flex; align-items: center; gap: 12px; }
+    .blink { width: 10px; height: 10px; border-radius: 50%; background: var(--em); animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)} }
+    .protocol-banner strong { font-size: 14px; font-weight: 900; color: #fff; }
+    .protocol-banner p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .protocol-chip {
+      font-size: 11px; font-weight: 800; color: var(--em);
+      padding: 6px 14px; border-radius: 999px;
+      background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3);
+    }
+
+    /* ===== TWO-COLUMN LAYOUT ===== */
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .canvas-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ===== GLASS PANEL ===== */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-mid);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .panel-title {
+      font-size: 11px; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ===== DRAGGABLE CARDS ===== */
+    .draggable-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-mid);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      cursor: grab;
+      touch-action: none;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+      box-shadow: var(--shadow);
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .draggable-card:last-child { margin-bottom: 0; }
+    .draggable-card:hover {
+      border-color: var(--em); transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 12px var(--em-glow);
+    }
+    .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .card-name { font-size: 13px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .card-icon { font-size: 18px; }
+    .drag-chip {
+      font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em;
+      padding: 3px 8px; border-radius: 999px;
+      background: rgba(16,185,129,.15); color: var(--em); border: 1px solid rgba(16,185,129,.3);
+      animation: floaty 2s ease-in-out infinite;
+    }
+    @keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+    .card-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+    .card-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-faint); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+    /* Mobile horizontal scroll for deck */
+    @media (max-width: 900px) {
+      #deckContainer {
+        display: flex; overflow-x: auto; gap: 10px;
+        padding-bottom: 6px; scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+      }
+      #deckContainer .draggable-card {
+        min-width: 220px; flex-shrink: 0; scroll-snap-align: start; margin-bottom: 0;
+      }
+    }
+
+    /* ===== MODIFIER CHIPS ===== */
+    .mod-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mod-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: 999px;
+      background: var(--bg-elevated); border: 1.5px solid var(--border-mid);
+      font-size: 12px; font-weight: 700; color: var(--text);
+      cursor: grab; touch-action: none;
+      transition: all .2s;
+    }
+    .mod-chip:hover { border-color: var(--em); transform: translateY(-2px); box-shadow: 0 4px 12px var(--em-glow); }
+
+    /* ===== ACTION ZONES ===== */
+    .zone {
+      border: 2px dashed var(--border-mid);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; transition: all .25s; position: relative; overflow: hidden;
+      min-height: 120px;
+    }
+    .zone::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at center, transparent 40%, rgba(16,185,129,.04) 100%);
+      pointer-events: none;
+    }
+    .zone.drag-over {
+      border-color: var(--em) !important; border-style: solid !important;
+      box-shadow: 0 0 30px var(--em-glow), inset 0 0 20px rgba(16,185,129,.05);
+      transform: scale(1.02);
+    }
+    .zone-icon {
+      width: 44px; height: 44px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 10px;
+      transition: transform .3s;
+    }
+    .zone.drag-over .zone-icon { transform: scale(1.2) rotate(5deg); animation: none; }
+    .zone-label { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+    .zone-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Zone colour themes */
+    .zone-chamber { border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.04); }
+    .zone-chamber .zone-icon { background: rgba(16,185,129,.1); color: var(--em); }
+    .zone-chamber .zone-label { color: var(--em); }
+
+    .zone-repair { border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.03); }
+    .zone-repair .zone-icon { background: rgba(16,185,129,.1); color: #34d399; }
+    .zone-repair .zone-label { color: #34d399; }
+
+    .zone-reuse { border-color: rgba(56,189,248,.3); background: rgba(56,189,248,.03); }
+    .zone-reuse .zone-icon { background: rgba(56,189,248,.1); color: #38bdf8; }
+    .zone-reuse .zone-label { color: #38bdf8; }
+
+    .zone-repurpose { border-color: rgba(196,181,253,.3); background: rgba(196,181,253,.03); }
+    .zone-repurpose .zone-icon { background: rgba(196,181,253,.1); color: #c4b5fd; }
+    .zone-repurpose .zone-label { color: #c4b5fd; }
+
+    .zone-replace { border-color: rgba(251,191,36,.3); background: rgba(251,191,36,.03); }
+    .zone-replace .zone-icon { background: rgba(251,191,36,.1); color: #fbbf24; }
+    .zone-replace .zone-label { color: #fbbf24; }
+
+    .zone-recycle { border-color: rgba(148,163,184,.3); background: rgba(148,163,184,.03); }
+    .zone-recycle .zone-icon { background: rgba(148,163,184,.1); color: #94a3b8; }
+    .zone-recycle .zone-label { color: #94a3b8; }
+
+    .zone-fav { border-color: rgba(251,191,36,.3); background: rgba(251,191,36,.03); }
+    .zone-fav .zone-icon { background: rgba(251,191,36,.1); color: #fbbf24; }
+    .zone-fav .zone-label { color: #fbbf24; }
+
+    .zone-compare { border-color: rgba(56,189,248,.3); background: rgba(56,189,248,.03); }
+    .zone-compare .zone-icon { background: rgba(56,189,248,.1); color: #38bdf8; }
+    .zone-compare .zone-label { color: #38bdf8; }
+
+    .zone-reset { border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.03); }
+    .zone-reset .zone-icon { background: rgba(248,113,113,.1); color: #f87171; }
+    .zone-reset .zone-label { color: #f87171; }
+
+    /* ===== PORTALS GRID ===== */
+    .portals-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 700px) {
+      .portals-grid { grid-template-columns: repeat(2, 1fr); }
+      .portals-grid .zone:nth-child(5) { grid-column: 1 / -1; }
+    }
+
+    /* ===== CHAMBER CONTENT ===== */
+    .chamber-loaded { width: 100%; text-align: left; }
+    .chamber-item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .chamber-item-icon { font-size: 32px; }
+    .chamber-item-name { font-size: 18px; font-weight: 900; color: #fff; }
+    .chamber-item-tag {
+      font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(16,185,129,.2); color: var(--em); border: 1px solid rgba(16,185,129,.4);
+    }
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat-box {
+      background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px; text-align: center;
+    }
+    .stat-label { font-size: 9px; text-transform: uppercase; font-weight: 800; color: var(--text-muted); letter-spacing: .06em; }
+    .stat-val { font-size: 16px; font-weight: 900; color: var(--em); margin-top: 3px; }
+    .stat-val.sky { color: #38bdf8; }
+    .drag-next-hint {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(16,185,129,.08); border: 1px dashed rgba(16,185,129,.3);
+      font-size: 11px; color: var(--text-muted);
+    }
+    .drag-token {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 999px;
+      background: var(--em); color: #000; font-size: 12px; font-weight: 900;
+      cursor: grab; touch-action: none; box-shadow: 0 4px 12px rgba(16,185,129,.4);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .drag-token:hover { transform: scale(1.05); }
+
+    /* ===== ACTION PLAN ===== */
+    .action-plan {
+      background: var(--bg-surface); border: 2px solid rgba(16,185,129,.4);
+      border-radius: var(--radius); padding: 24px;
+      animation: popIn .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popIn { from{opacity:0;transform:scale(.9) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .plan-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .plan-icon { font-size: 36px; }
+    .plan-tag {
+      font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(16,185,129,.2); color: var(--em); border: 1px solid rgba(16,185,129,.4);
+    }
+    .plan-name { font-size: 22px; font-weight: 900; color: #fff; margin-top: 4px; }
+    .plan-score { font-size: 28px; font-weight: 900; color: var(--em); }
+    .plan-meta { font-size: 11px; color: var(--text-muted); }
+    .plan-why { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.7; }
+    .checklist-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--em); margin-bottom: 10px; }
+    .checklist { display: flex; flex-direction: column; gap: 8px; }
+    .check-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px;
+      cursor: pointer; transition: border-color .2s;
+    }
+    .check-item:hover { border-color: var(--em); }
+    .check-item input[type="checkbox"] { width: 16px; height: 16px; margin-top: 1px; accent-color: var(--em); cursor: pointer; flex-shrink: 0; }
+    .check-text { font-size: 12px; color: var(--text); font-weight: 600; }
+
+    /* ===== COMPARISON MATRIX ===== */
+    .matrix {
+      background: var(--bg-surface); border: 1.5px solid rgba(56,189,248,.3);
+      border-radius: var(--radius); padding: 20px; overflow-x: auto;
+      animation: popIn .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    .matrix table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .matrix th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    .matrix td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .matrix tr.best td { background: rgba(16,185,129,.06); }
+    .opt-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+
+    /* ===== FAVORITES LIST ===== */
+    .fav-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .fav-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; font-size: 12px;
+    }
+    .fav-item-name { font-weight: 700; color: var(--text); }
+    .fav-item-plan { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ===== IS-DRAGGING ghost ===== */
+    .ghost-drag {
+      position: fixed; pointer-events: none; z-index: 9999;
+      opacity: .9; transform: scale(1.05) rotate(2deg);
+      box-shadow: var(--shadow-drag);
+      border-color: var(--em) !important;
+    }
+
+    /* ===== SECTION TITLES ===== */
+    .section-label {
+      font-size: 10px; font-weight: 900; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+    }
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* ===== SCORE BAR ===== */
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-bar { flex: 1; height: 4px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 999px; background: var(--em); transition: width .6s ease; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .stat-row { grid-template-columns: repeat(3,1fr); }
+      .plan-score { font-size: 20px; }
+      .plan-name { font-size: 18px; }
+    }
+  </style>
 </head>
-<body class="antialiased">
+<body>
 
-  <!-- Header Navigation -->
-  <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] sticky top-0 z-40 transition-colors shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-      
-      <!-- Brand & Canvas Protocol Tag -->
-      <a href="#" onclick="location.reload(); return false;" class="flex items-center gap-3 group text-decoration-none">
-        <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/30">
-          🎨
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="font-black text-base md:text-lg leading-tight tracking-tight text-[var(--text-main)]">
-              Fix It First
-            </span>
-            <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
-              Canvas Protocol
-            </span>
+<!-- HEADER -->
+<header>
+  <div class="brand" onclick="location.reload()">
+    <div class="brand-icon">🎨</div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="brand-name">Fix It First</span>
+        <span class="badge">Canvas Protocol</span>
+      </div>
+      <div class="brand-sub">Think before you throw.</div>
+    </div>
+  </div>
+  <div class="live-dot" style="display:none" id="liveDot">
+    <span class="dot"></span>
+    <span>Drag to Act</span>
+  </div>
+  <div id="liveDotMobile" class="live-dot" style="font-size:10px">
+    <span class="dot"></span>
+    <span>Drag &amp; Drop Only</span>
+  </div>
+  <div class="hdr-right">
+    <button class="icon-btn" id="btnTheme" title="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- MAIN CANVAS -->
+<main>
+  <div id="app"></div>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ===== PRESET CARDS DATA ===== */
+  const CARDS = [
+    { id:'c1', icon:'💻', name:'Laptop', age:4, condition:'fair', severity:'minor', sentimental:false,
+      description:'Screen has a crack, battery holds 40% charge, hinges slightly loose.' },
+    { id:'c2', icon:'📱', name:'Smartphone', age:3, condition:'poor', severity:'severe', sentimental:false,
+      description:'Cracked screen, broken charging port, battery drains in 2 hours.' },
+    { id:'c3', icon:'🪑', name:'Wooden Chair', age:12, condition:'good', severity:'minor', sentimental:true,
+      description:'Grandparent's heirloom chair. Wobbly leg, worn lacquer, structurally sound.' },
+    { id:'c4', icon:'📷', name:'DSLR Camera', age:7, condition:'excellent', severity:'none', sentimental:false,
+      description:'Fully working, just older model. Sensor clean, all buttons function.' },
+    { id:'c5', icon:'👟', name:'Running Shoes', age:2, condition:'fair', severity:'minor', sentimental:false,
+      description:'Sole starting to peel on left shoe. Upper still intact and clean.' },
+    { id:'c6', icon:'🎸', name:'Electric Guitar', age:9, condition:'good', severity:'moderate', sentimental:true,
+      description:'First guitar. One pickup faulty, neck straight, tuning pegs sticky.' },
+  ];
+
+  /* ===== STATE ===== */
+  const state = {
+    theme: localStorage.getItem('fif_theme') || 'dark',
+    activeItem: null,
+    eval: null,
+    activePlan: null,
+    showComparison: false,
+    favorites: JSON.parse(localStorage.getItem('fif_favs') || '[]'),
+    customItem: { id:'custom', icon:'✨', name:'My Custom Item', age:5, condition:'fair', severity:'minor', sentimental:false, description:'Describe your item here.' }
+  };
+
+  /* ===== EVALUATION ENGINE ===== */
+  function evaluateItem(item) {
+    const ageFactor = Math.min(item.age / 15, 1);
+    const condMap = { excellent:1, good:.78, fair:.52, poor:.28 };
+    const sevMap = { none:1, minor:.8, moderate:.55, severe:.3 };
+    const cond = condMap[item.condition] || .5;
+    const sev = sevMap[item.severity] || .5;
+    const senti = item.sentimental ? .15 : 0;
+    const base = cond * sev;
+
+    function clamp(v) { return Math.round(Math.max(5, Math.min(99, v))); }
+
+    const options = {
+      repair: {
+        key:'repair', icon:'🔧', name:'Repair', color:'#34d399',
+        score: clamp((base * 85) + senti * 60 + (1 - ageFactor) * 15),
+        cost: base > .6 ? '$20–$80' : '$80–$200',
+        time: base > .6 ? '1–3 hrs' : '3–8 hrs',
+        difficulty: base > .6 ? 'Easy' : 'Medium',
+        eco: '★★★★★',
+        why: `Repairing this ${item.name} is ${base>.6?'highly':'moderately'} feasible. Fixing the existing issues preserves embedded energy and extends usable life significantly.`,
+        checklist: ['Diagnose the root cause of each fault','Source compatible spare parts or DIY materials','Repair or replace faulty components','Test all functions thoroughly','Clean and reassemble']
+      },
+      reuse: {
+        key:'reuse', icon:'🔄', name:'Reuse', color:'#38bdf8',
+        score: clamp((cond * 75) + (1 - ageFactor) * 10 + senti * 20),
+        cost: 'Free',
+        time: '30 min',
+        difficulty: 'Easy',
+        eco: '★★★★☆',
+        why: `If you no longer need this ${item.name}, passing it to someone who will use it is the second-best option. Reuse avoids the energy cost of recycling or manufacturing.`,
+        checklist: ['Clean and sanitise the item thoroughly','Check for safety issues before giving away','List on local sharing platforms (Facebook Marketplace, Freecycle)','Package securely for handover','Delete your personal data if applicable']
+      },
+      repurpose: {
+        key:'repurpose', icon:'✨', name:'Repurpose', color:'#c4b5fd',
+        score: clamp((base * 60) + ageFactor * 20 + senti * 25),
+        cost: '$5–$30',
+        time: '2–6 hrs',
+        difficulty: 'Creative',
+        eco: '★★★★☆',
+        why: `This ${item.name} has repurpose potential. Transforming it into something new keeps materials out of landfill and creates unique value.`,
+        checklist: ['Brainstorm alternative uses for the materials','Sketch your upcycle design','Gather any additional craft materials needed','Disassemble carefully preserving usable parts','Build and finish your new creation']
+      },
+      replace: {
+        key:'replace', icon:'🛍️', name:'Replace', color:'#fbbf24',
+        score: clamp((1 - base) * 60 + ageFactor * 30),
+        cost: '$100–$500+',
+        time: '1–3 days',
+        difficulty: 'Easy',
+        eco: '★★☆☆☆',
+        why: `Replacing the ${item.name} may make sense if repair costs exceed replacement cost. Choose an energy-efficient, certified-refurbished, or long-warranty model.`,
+        checklist: ['Research eco-rated or refurbished alternatives','Compare total cost of ownership','Check if manufacturer offers trade-in','Recycle the old unit responsibly','Register warranty on new item']
+      },
+      recycle: {
+        key:'recycle', icon:'♻️', name:'Recycle', color:'#94a3b8',
+        score: clamp(ageFactor * 55 + (1 - base) * 40),
+        cost: 'Free–$20',
+        time: '1–2 hrs',
+        difficulty: 'Easy',
+        eco: '★★★☆☆',
+        why: `When repair or reuse aren't viable, responsible recycling of the ${item.name} recovers raw materials and prevents toxic e-waste from entering landfill.`,
+        checklist: ['Locate certified recycling facility (use earth911.com)','Remove batteries, ink, or hazardous components','Wipe personal data from digital devices','Bundle cords and accessories','Drop off during scheduled recycling hours']
+      }
+    };
+
+    const ranked = Object.values(options).sort((a,b)=>b.score-a.score);
+    ranked.forEach((o,i)=>{ o.rank=i+1; });
+    const savings = Math.round(50 + base * 300 + item.age * 8);
+    const co2 = Math.round(5 + ageFactor * 40 + (1-base) * 20);
+
+    return { item, options, ranked, top: ranked[0], savings, co2 };
+  }
+
+  /* ===== UTILITIES ===== */
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(()=>el.classList.remove('show'), 2800);
+  }
+  function saveFavs() {
+    localStorage.setItem('fif_favs', JSON.stringify(state.favorites));
+  }
+  function toggleFav(item, planName) {
+    const key = item.name;
+    const idx = state.favorites.findIndex(f=>f.key===key);
+    if (idx>=0) { state.favorites.splice(idx,1); toast('💔 Removed from Favorites'); }
+    else { state.favorites.push({ key, icon:item.icon, name:item.name, plan:planName||'Analyzed' }); toast('⭐ Added to Favorites!'); }
+    saveFavs();
+  }
+
+  /* ===== THEME ===== */
+  function applyTheme() {
+    document.body.classList.toggle('light', state.theme==='light');
+    const btn = document.getElementById('btnTheme');
+    if (btn) btn.textContent = state.theme==='light' ? '🌙' : '☀️';
+  }
+
+  /* ===== RENDER ===== */
+  function render() {
+    applyTheme();
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    const e = state.eval;
+
+    app.innerHTML = `
+      <!-- PROTOCOL BANNER -->
+      <div class="protocol-banner">
+        <div class="left">
+          <span class="blink"></span>
+          <div>
+            <strong>🎨 The Canvas Protocol is ACTIVE</strong>
+            <p>No buttons. Drag data cards into Action Zones to analyze, decide &amp; act.</p>
           </div>
-          <span class="block text-[11px] text-[var(--text-muted)] font-medium">
-            Think before you throw.
-          </span>
         </div>
-      </a>
-
-      <!-- Canvas Protocol Live Badge -->
-      <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Drag Cards to Execute Actions</span>
+        <span class="protocol-chip">🖐️ Drag &amp; Drop Interface</span>
       </div>
 
-      <!-- Display Toggles -->
-      <div class="flex items-center gap-2">
-        <button 
-          id="btnContrastToggle" 
-          class="px-3 py-1.5 rounded-full border border-[var(--border-medium)] bg-[var(--bg-surface)] text-[var(--text-main)] text-xs font-semibold hover:border-emerald-500 transition cursor-pointer" 
-          title="Toggle High Contrast Mode"
-        >
-          👁️ <span class="hidden sm:inline text-[11px]">Contrast</span>
-        </button>
+      <!-- TWO-COLUMN CANVAS -->
+      <div class="canvas-grid">
 
-        <button 
-          id="btnThemeToggle" 
-          class="px-3 py-1.5 rounded-full border border-[var(--border-medium)] bg-[var(--bg-surface)] text-[var(--text-main)] text-xs font-semibold hover:border-emerald-500 transition cursor-pointer" 
-          title="Toggle Dark / Light Theme"
-        >
-          🌙
-        </button>
+        <!-- ====== LEFT COLUMN: Card Deck + Modifiers ====== -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- CARD DECK -->
+          <div class="panel">
+            <div class="panel-title">🎴 Data Cards Deck</div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px">
+              Drag any card into the <strong style="color:var(--em)">Diagnostic Chamber</strong> or directly into a Decision Portal.
+            </p>
+            <div id="deckContainer">
+              ${CARDS.map(c=>`
+                <div class="draggable-card" data-type="item" data-id="${c.id}">
+                  <div class="card-top">
+                    <span class="card-name"><span class="card-icon">${c.icon}</span>${esc(c.name)}</span>
+                    <span class="drag-chip">Drag ➔</span>
+                  </div>
+                  <p class="card-desc">${esc(c.description)}</p>
+                  <div class="card-meta">
+                    <span class="capitalize">${c.condition} condition</span>
+                    <span>${c.age} yrs old</span>
+                  </div>
+                </div>
+              `).join('')}
+              <!-- CUSTOM CARD -->
+              <div class="draggable-card" data-type="item" data-id="custom"
+                style="border-color:rgba(16,185,129,.4);border-style:dashed;background:rgba(16,185,129,.04)">
+                <div class="card-top">
+                  <span class="card-name"><span class="card-icon">✨</span>${esc(state.customItem.name)}</span>
+                  <span class="drag-chip">Drag ➔</span>
+                </div>
+                <p class="card-desc">Custom item (${state.customItem.age} yrs · ${state.customItem.condition})</p>
+                <div class="card-meta"><span>Custom</span><span>Tap to edit ✎</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODIFIER CHIPS -->
+          <div class="panel">
+            <div class="panel-title">🧪 Modifier Tokens</div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">
+              Drag a token onto the <strong style="color:var(--em)">Diagnostic Chamber</strong> to live-tweak the active item.
+            </p>
+            <div class="mod-chips">
+              <span class="mod-chip" data-type="modifier" data-mod="severity" data-val="severe">⚡ Severe Damage</span>
+              <span class="mod-chip" data-type="modifier" data-mod="severity" data-val="minor">🟢 Minor Scratches</span>
+              <span class="mod-chip" data-type="modifier" data-mod="condition" data-val="excellent">✨ Like New</span>
+              <span class="mod-chip" data-type="modifier" data-mod="condition" data-val="poor">🪫 Very Worn</span>
+              <span class="mod-chip" data-type="modifier" data-mod="sentimental" data-val="true">💎 Sentimental</span>
+              <span class="mod-chip" data-type="modifier" data-mod="age" data-val="add">⏳ +3 Years</span>
+            </div>
+          </div>
+
+          <!-- RESET + UTILITY ZONES -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="zone zone-fav" data-zone="favorite">
+              <div class="zone-icon">⭐</div>
+              <div class="zone-label">Favorites</div>
+              <div class="zone-hint">Drop to save (${state.favorites.length})</div>
+            </div>
+            <div class="zone zone-compare" data-zone="compare">
+              <div class="zone-icon">⚖️</div>
+              <div class="zone-label">Compare</div>
+              <div class="zone-hint">Drop to show matrix</div>
+            </div>
+          </div>
+
+          <div class="zone zone-reset" data-zone="reset" style="min-height:80px;padding:14px">
+            <div class="zone-icon" style="width:36px;height:36px;font-size:18px;margin-bottom:6px">🗑️</div>
+            <div class="zone-label" style="font-size:11px">Reset Vortex</div>
+            <div class="zone-hint">Drop any item to clear canvas</div>
+          </div>
+
+          <!-- FAVORITES LIST -->
+          ${state.favorites.length>0 ? `
+            <div class="panel">
+              <div class="panel-title">⭐ Saved Favorites</div>
+              <div class="fav-list">
+                ${state.favorites.map(f=>`
+                  <div class="fav-item">
+                    <div>
+                      <div class="fav-item-name">${esc(f.icon)} ${esc(f.name)}</div>
+                      <div class="fav-item-plan">Plan: ${esc(f.plan)}</div>
+                    </div>
+                    <span style="font-size:10px;color:var(--text-faint);cursor:pointer" onclick="removeFav('${esc(f.key)}')">✕</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- ====== RIGHT COLUMN: Workspace ====== -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- PRIMARY DROP ZONE: Diagnostic Chamber -->
+          <div class="zone zone-chamber ${e?'':'zone-chamber-empty'}" data-zone="analyze" id="zoneChamber"
+            style="min-height:${e?'auto':'180px'};padding:${e?'20px':'30px 20px'}">
+            ${e ? `
+              <div class="chamber-loaded">
+                <div class="chamber-item-header">
+                  <span class="chamber-item-icon">${e.item.icon}</span>
+                  <div>
+                    <span class="chamber-item-tag">⚡ Item Locked In Chamber</span>
+                    <div class="chamber-item-name">${esc(e.item.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+                      ${e.item.age} yrs · ${e.item.condition} · ${e.item.severity} damage
+                      ${e.item.sentimental?'· 💎 sentimental':''}
+                    </div>
+                  </div>
+                </div>
+                <div class="stat-row">
+                  <div class="stat-box">
+                    <div class="stat-label">Top Match</div>
+                    <div class="stat-val">${e.top.icon} ${e.top.name}</div>
+                    <div style="font-size:10px;color:var(--text-muted)">${e.top.score}% fit</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-label">Est. Savings</div>
+                    <div class="stat-val">$${e.savings}</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-label">CO₂ Avoided</div>
+                    <div class="stat-val sky">${e.co2} kg</div>
+                  </div>
+                </div>
+                <!-- Scores mini-bar -->
+                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+                  ${e.ranked.map(o=>`
+                    <div style="display:flex;align-items:center;gap:8px;font-size:11px">
+                      <span style="width:80px;color:${o.color};font-weight:800">${o.icon} ${o.name}</span>
+                      <div class="score-bar"><div class="score-bar-fill" style="width:${o.score}%;background:${o.color}"></div></div>
+                      <span style="width:32px;text-align:right;color:var(--text-muted)">${o.score}%</span>
+                    </div>
+                  `).join('')}
+                </div>
+                <div class="drag-next-hint">
+                  <span>👉 Now drag the token into any <strong>Decision Portal</strong> below</span>
+                  <div class="drag-token draggable-card" data-type="evaluated" data-id="${e.item.id}" style="touch-action:none">
+                    ${e.item.icon} Drag to Portal ➔
+                  </div>
+                </div>
+              </div>
+            ` : `
+              <div class="zone-icon" style="animation:floaty 2s ease-in-out infinite">🔬</div>
+              <div class="zone-label" style="font-size:15px">🔬 Diagnostic Chamber</div>
+              <div class="zone-hint" style="font-size:12px;margin-top:6px">Drop any card here to run the 5-option rule engine</div>
+            `}
+          </div>
+
+          <!-- DECISION PORTALS: 5 zones -->
+          <div>
+            <div class="section-label">🎯 5 Decision Portals — Drop your item or evaluated token</div>
+            <div class="portals-grid">
+              <div class="zone zone-repair" data-zone="plan" data-plan="repair" style="min-height:100px">
+                <div class="zone-icon">🔧</div>
+                <div class="zone-label">Repair</div>
+                <div class="zone-hint">${e?e.options.repair.score+'% fit':'Drop to analyze'}</div>
+              </div>
+              <div class="zone zone-reuse" data-zone="plan" data-plan="reuse" style="min-height:100px">
+                <div class="zone-icon">🔄</div>
+                <div class="zone-label">Reuse</div>
+                <div class="zone-hint">${e?e.options.reuse.score+'% fit':'Drop to analyze'}</div>
+              </div>
+              <div class="zone zone-repurpose" data-zone="plan" data-plan="repurpose" style="min-height:100px">
+                <div class="zone-icon">✨</div>
+                <div class="zone-label">Repurpose</div>
+                <div class="zone-hint">${e?e.options.repurpose.score+'% fit':'Drop to analyze'}</div>
+              </div>
+              <div class="zone zone-replace" data-zone="plan" data-plan="replace" style="min-height:100px">
+                <div class="zone-icon">🛍️</div>
+                <div class="zone-label">Replace</div>
+                <div class="zone-hint">${e?e.options.replace.score+'% fit':'Drop to analyze'}</div>
+              </div>
+              <div class="zone zone-recycle" data-zone="plan" data-plan="recycle" style="min-height:100px">
+                <div class="zone-icon">♻️</div>
+                <div class="zone-label">Recycle</div>
+                <div class="zone-hint">${e?e.options.recycle.score+'% fit':'Drop to analyze'}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIVE ACTION PLAN -->
+          ${state.activePlan ? `
+            <div class="action-plan" id="planContainer">
+              <div class="plan-header">
+                <div>
+                  <span class="plan-tag">✅ Active Action Plan</span>
+                  <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+                    <span class="plan-icon">${state.activePlan.icon}</span>
+                    <div>
+                      <div class="plan-name">${state.activePlan.name} Plan</div>
+                      <div class="plan-meta">${state.activePlan.time} &nbsp;·&nbsp; ${state.activePlan.difficulty} &nbsp;·&nbsp; ${state.activePlan.cost}</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="text-align:right">
+                  <div class="plan-score">${state.activePlan.score}%</div>
+                  <div style="font-size:10px;color:var(--text-muted)">Fit Score</div>
+                  <div style="margin-top:4px;font-size:10px;color:var(--text-muted)">Eco: ${state.activePlan.eco}</div>
+                </div>
+              </div>
+              <p class="plan-why">${state.activePlan.why}</p>
+              <div class="checklist-title">✅ Execution Checklist</div>
+              <div class="checklist">
+                ${state.activePlan.checklist.map((step,i)=>`
+                  <label class="check-item">
+                    <input type="checkbox" />
+                    <span class="check-text">${i+1}. ${esc(step)}</span>
+                  </label>
+                `).join('')}
+              </div>
+              <div style="margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(16,185,129,.06);border:1px dashed rgba(16,185,129,.3);font-size:11px;color:var(--text-muted);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span>🌿 Plan generated for <strong style="color:var(--em)">${esc(state.activeItem.name)}</strong></span>
+                <span>Drag item to ⭐ Favorites to save this decision</span>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- COMPARISON MATRIX -->
+          ${state.showComparison && e ? `
+            <div class="matrix">
+              <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+                <span>⚖️</span>
+                <span>Side-by-Side Comparison: ${esc(e.item.name)}</span>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Option</th><th>Fit Score</th><th>Cost</th><th>Time</th><th>Difficulty</th><th>Eco</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${e.ranked.map(o=>`
+                    <tr class="${state.activePlan&&state.activePlan.key===o.key?'best':''}">
+                      <td><span class="opt-badge" style="background:${o.color}22;color:${o.color};border:1px solid ${o.color}44">${o.icon} #${o.rank} ${o.name}</span></td>
+                      <td style="font-weight:900;color:${o.color}">${o.score}%</td>
+                      <td>${o.cost}</td><td>${o.time}</td><td>${o.difficulty}</td>
+                      <td>${o.eco}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : ''}
+
+        </div>
       </div>
+    `;
 
-    </div>
-  </header>
+    // Attach drag listeners after render
+    initDrag();
+  }
 
-  <!-- Interactive Canvas Workspace -->
-  <main id="mainContent" class="max-w-7xl mx-auto px-4 py-6 min-h-[calc(100vh-120px)]">
-    <!-- Rendered dynamically by app.js (Canvas Protocol) -->
-  </main>
+  /* ===== DRAG ENGINE ===== */
+  function initDrag() {
+    let ghost = null;
+    let dragging = null;
+    let offX = 0, offY = 0;
+    let overZone = null;
 
-  <!-- Canvas Footer -->
-  <footer class="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] py-5 text-center text-xs text-[var(--text-muted)] transition-colors">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p><strong>Fix It First</strong> · The Canvas Protocol Edition. Zero buttons for primary actions.</p>
-      <p class="text-[11px] text-[var(--text-faint)]">Touch and Pointer drag-and-drop enabled.</p>
-    </div>
-  </footer>
+    function cleanup() {
+      if (ghost) { ghost.remove(); ghost = null; }
+      document.querySelectorAll('.draggable-card[data-dragging]').forEach(el=>{
+        el.style.opacity=''; el.removeAttribute('data-dragging');
+      });
+      document.querySelectorAll('.zone.drag-over').forEach(z=>z.classList.remove('drag-over'));
+      dragging = null; overZone = null;
+    }
 
-  <script src="app.js"></script>
+    function getZoneAt(x, y) {
+      const zones = document.querySelectorAll('.zone[data-zone]');
+      for (const z of zones) {
+        const r = z.getBoundingClientRect();
+        if (x >= r.left-20 && x <= r.right+20 && y >= r.top-20 && y <= r.bottom+20) return z;
+      }
+      return null;
+    }
+
+    function getItem(el) {
+      const id = el.getAttribute('data-id');
+      if (id === 'custom') return Object.assign({}, state.customItem);
+      return CARDS.find(c=>c.id===id) || null;
+    }
+
+    function handleDrop(el, zone) {
+      const type = el.getAttribute('data-type');
+      const zoneType = zone.getAttribute('data-zone');
+      const planKey = zone.getAttribute('data-plan');
+
+      // === DROP INTO CHAMBER ===
+      if (zoneType === 'analyze') {
+        if (type === 'modifier') {
+          if (!state.activeItem) { toast('⚠️ Drop an item card into the Chamber first!'); return; }
+          const mod = el.getAttribute('data-mod');
+          const val = el.getAttribute('data-val');
+          if (mod === 'severity') state.activeItem.severity = val;
+          else if (mod === 'condition') state.activeItem.condition = val;
+          else if (mod === 'sentimental') state.activeItem.sentimental = true;
+          else if (mod === 'age') state.activeItem.age = Math.min(state.activeItem.age + 3, 40);
+          state.eval = evaluateItem(state.activeItem);
+          if (state.activePlan) state.activePlan = state.eval.options[state.activePlan.key];
+          toast(`🧪 Modified: ${mod} → ${val}`);
+          render(); return;
+        }
+        const item = getItem(el);
+        if (!item) { toast('⚠️ Unknown item'); return; }
+        state.activeItem = item;
+        state.eval = evaluateItem(item);
+        state.activePlan = null;
+        state.showComparison = false;
+        toast(`⚡ ${item.name} locked into Diagnostic Chamber!`);
+        render();
+        setTimeout(()=>{ document.getElementById('zoneChamber')?.scrollIntoView({behavior:'smooth',block:'nearest'}); },50);
+        return;
+      }
+
+      // === DROP INTO DECISION PORTAL ===
+      if (zoneType === 'plan') {
+        let item = null;
+        if (type === 'item' || type === 'evaluated') {
+          item = type === 'evaluated' ? state.activeItem : getItem(el);
+          if (item) {
+            state.activeItem = item;
+            state.eval = evaluateItem(item);
+          }
+        }
+        if (!state.eval) { toast('⚠️ Drop an item into the Chamber first!'); return; }
+        state.activePlan = state.eval.options[planKey];
+        toast(`🎯 ${state.activePlan.icon} ${state.activePlan.name} Plan Activated!`);
+        render();
+        setTimeout(()=>{ document.getElementById('planContainer')?.scrollIntoView({behavior:'smooth',block:'start'}); },80);
+        return;
+      }
+
+      // === DROP INTO FAVORITE ===
+      if (zoneType === 'favorite') {
+        let item = state.activeItem;
+        if (type === 'item') item = getItem(el) || state.activeItem;
+        if (!item) { toast('⚠️ No item to favorite! Drop an item card first.'); return; }
+        toggleFav(item, state.activePlan?.name || 'Analyzed');
+        render(); return;
+      }
+
+      // === DROP INTO COMPARE ===
+      if (zoneType === 'compare') {
+        if (type === 'item') {
+          const item = getItem(el);
+          if (item) { state.activeItem = item; state.eval = evaluateItem(item); }
+        }
+        if (!state.eval) { toast('⚠️ Drop an item first!'); return; }
+        state.showComparison = !state.showComparison;
+        toast(state.showComparison ? '⚖️ Comparison Matrix opened!' : 'Comparison Matrix closed');
+        render(); return;
+      }
+
+      // === DROP INTO RESET ===
+      if (zoneType === 'reset') {
+        state.activeItem = null; state.eval = null;
+        state.activePlan = null; state.showComparison = false;
+        toast('🗑️ Canvas cleared! Start fresh.');
+        render(); return;
+      }
+    }
+
+    // Attach to ALL draggable elements
+    document.querySelectorAll('.draggable-card, .mod-chip').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        cleanup();
+        dragging = el;
+
+        const rect = el.getBoundingClientRect();
+        offX = e.clientX - rect.left;
+        offY = e.clientY - rect.top;
+
+        // Auto-scroll chamber into view if dragging item and no active item yet
+        if ((el.getAttribute('data-type') === 'item') && !state.activeItem) {
+          const ch = document.getElementById('zoneChamber');
+          if (ch) {
+            const cr = ch.getBoundingClientRect();
+            if (cr.top < 0 || cr.bottom > window.innerHeight) {
+              ch.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+        }
+
+        // Create ghost
+        ghost = el.cloneNode(true);
+        ghost.classList.add('ghost-drag');
+        ghost.style.width = rect.width + 'px';
+        ghost.style.left = rect.left + 'px';
+        ghost.style.top = rect.top + 'px';
+        ghost.querySelectorAll('*').forEach(c => c.style.pointerEvents = 'none');
+        document.body.appendChild(ghost);
+
+        el.style.opacity = '0.3';
+        el.setAttribute('data-dragging', '1');
+
+        const onMove = ev => {
+          if (!ghost) return;
+          const x = ev.clientX - offX;
+          const y = ev.clientY - offY;
+          ghost.style.left = x + 'px';
+          ghost.style.top = y + 'px';
+
+          // Edge scroll
+          const vh = window.innerHeight;
+          const thresh = 80;
+          if (ev.clientY > vh - thresh) window.scrollBy(0, Math.min(25, Math.round((ev.clientY-(vh-thresh))/2)));
+          else if (ev.clientY < thresh) window.scrollBy(0, -Math.min(25, Math.round((thresh-ev.clientY)/2)));
+
+          // Highlight zones
+          const z = getZoneAt(ev.clientX, ev.clientY);
+          if (overZone && overZone !== z) overZone.classList.remove('drag-over');
+          if (z && z !== overZone) {
+            z.classList.add('drag-over');
+            if (navigator.vibrate) navigator.vibrate(10);
+          }
+          overZone = z;
+        };
+
+        const onUp = ev => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onCancel);
+
+          const dropped = dragging;
+          const target = overZone || getZoneAt(ev.clientX, ev.clientY);
+          cleanup();
+
+          if (dropped && target) handleDrop(dropped, target);
+        };
+
+        const onCancel = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onCancel);
+          cleanup();
+        };
+
+        window.addEventListener('pointermove', onMove, { passive: false });
+        window.addEventListener('pointerup', onUp, { once: true });
+        window.addEventListener('pointercancel', onCancel, { once: true });
+      }, { passive: false });
+    });
+
+    // Safety: blur clears any stuck ghost
+    window.removeEventListener('blur', cleanup);
+    window.addEventListener('blur', cleanup);
+  }
+
+  /* ===== GLOBAL FUNCTIONS ===== */
+  window.removeFav = function(key) {
+    state.favorites = state.favorites.filter(f => f.key !== key);
+    saveFavs(); render();
+  };
+
+  /* ===== THEME TOGGLE ===== */
+  document.getElementById('btnTheme').addEventListener('click', () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('fif_theme', state.theme);
+    applyTheme();
+  });
+
+  /* ===== BOOT ===== */
+  render();
+
+})();
+</script>
 </body>
 </html>
