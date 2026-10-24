@@ -124,6 +124,24 @@ a {
   }
 }
 
+/* Card Deck Horizontal Carousel on Mobile */
+@media (max-width: 1023px) {
+  #deckContainer {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  #deckContainer .draggable-card {
+    min-width: 230px;
+    max-width: 260px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+}
+
 /* Action Zone Drop Targets */
 .action-zone {
   position: relative;

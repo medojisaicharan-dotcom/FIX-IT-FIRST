@@ -680,6 +680,14 @@
     let startX = 0, startY = 0;
     let offsetX = 0, offsetY = 0;
     let hoveredZone = null;
+    let autoScrollInterval = null;
+
+    function stopAutoScroll() {
+      if (autoScrollInterval) {
+        clearInterval(autoScrollInterval);
+        autoScrollInterval = null;
+      }
+    }
 
     const draggables = document.querySelectorAll('.draggable-card, .drag-modifier-chip');
 
@@ -689,11 +697,23 @@
         e.preventDefault();
 
         currentDraggable = el;
+        const cardType = el.getAttribute('data-card-type');
         const rect = el.getBoundingClientRect();
         startX = rect.left;
         startY = rect.top;
         offsetX = e.clientX - rect.left;
         offsetY = e.clientY - rect.top;
+
+        // Auto-scroll Diagnostic Chamber into view on drag start if offscreen
+        if (cardType === 'item' && !state.activeItem) {
+          const chamber = document.getElementById('zoneDiagnostic');
+          if (chamber) {
+            const cRect = chamber.getBoundingClientRect();
+            if (cRect.bottom > window.innerHeight || cRect.top < 60) {
+              chamber.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+        }
 
         // Create visual clone / ghost
         dragGhost = el.cloneNode(true);
@@ -713,13 +733,26 @@
           el.setPointerCapture(e.pointerId);
         } catch (_) {}
 
-        // Pointer move handler
+        // Pointer move handler with Edge Auto-Scrolling
         const onPointerMove = (moveEvent) => {
           if (!dragGhost) return;
           const currentX = moveEvent.clientX - offsetX;
           const currentY = moveEvent.clientY - offsetY;
           dragGhost.style.left = `${currentX}px`;
           dragGhost.style.top = `${currentY}px`;
+
+          // Edge auto-scrolling when dragging near top or bottom of viewport
+          const clientY = moveEvent.clientY;
+          const viewH = window.innerHeight;
+          const edgeThreshold = 90;
+
+          if (clientY > viewH - edgeThreshold) {
+            const speed = Math.min(22, Math.max(6, Math.round((clientY - (viewH - edgeThreshold)) / 2)));
+            window.scrollBy(0, speed);
+          } else if (clientY < edgeThreshold) {
+            const speed = Math.min(22, Math.max(6, Math.round((edgeThreshold - clientY) / 2)));
+            window.scrollBy(0, -speed);
+          }
 
           // Detect action zone underneath pointer
           const elemBelow = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
@@ -733,7 +766,7 @@
           if (zone && zone !== hoveredZone) {
             hoveredZone = zone;
             hoveredZone.classList.add('drag-active');
-            if (navigator.vibrate) navigator.vibrate(10);
+            if (navigator.vibrate) navigator.vibrate(12);
           }
         };
 
@@ -741,6 +774,7 @@
         const onPointerUp = (upEvent) => {
           document.removeEventListener('pointermove', onPointerMove);
           document.removeEventListener('pointerup', onPointerUp);
+          stopAutoScroll();
 
           if (currentDraggable) {
             currentDraggable.style.opacity = '1';
