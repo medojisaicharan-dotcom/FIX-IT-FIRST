@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix It First — Think before you throw.</title>
+  <meta name="description" content="Frontend-only decision helper for broken, damaged, or unwanted items. Evaluates Repair, Reuse, Repurpose, Replace, and Recycle with transparent fit scores.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] sticky top-0 z-40 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Tagline -->
+      <a href="#" onclick="location.reload(); return false;" class="flex items-center gap-2.5 text-decoration-none group">
+        <div class="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black text-lg shadow-sm group-hover:scale-105 transition-transform">
+          🌱
+        </div>
+        <div>
+          <span class="block font-black text-base md:text-lg leading-tight tracking-tight text-[var(--text-main)]">
+            Fix It First
+          </span>
+          <span class="block text-[11px] text-[var(--text-muted)] font-medium">
+            Think before you throw.
+          </span>
+        </div>
+      </a>
+
+      <!-- Progress Step Indicator (visible during assessment) -->
+      <nav id="flowProgress" class="hidden md:flex items-center gap-4 text-xs font-semibold" aria-label="Assessment Progress">
+        <div class="flex items-center gap-2">
+          <div class="step-dot" id="dotStep2">1</div>
+          <span class="text-[var(--text-muted)]">Item Context</span>
+        </div>
+        <div class="w-6 h-[2px] bg-[var(--border-subtle)]"></div>
+        <div class="flex items-center gap-2">
+          <div class="step-dot" id="dotStep3">2</div>
+          <span class="text-[var(--text-muted)]">Describe Problem</span>
+        </div>
+        <div class="w-6 h-[2px] bg-[var(--border-subtle)]"></div>
+        <div class="flex items-center gap-2">
+          <div class="step-dot" id="dotStep4">3</div>
+          <span class="text-[var(--text-muted)]">Results & Plan</span>
+        </div>
+      </nav>
+
+      <!-- Action Toggles (Contrast, Theme) -->
+      <div class="flex items-center gap-2">
+        <button 
+          id="btnContrastToggle" 
+          class="btn-secondary text-xs px-2.5 py-1.5" 
+          title="Toggle High Contrast Mode (Accessibility)"
+          aria-label="Toggle High Contrast Mode"
+        >
+          👁️ <span class="hidden sm:inline text-[11px]">Contrast</span>
+        </button>
+
+        <button 
+          id="btnThemeToggle" 
+          class="btn-secondary text-sm px-2.5 py-1.5" 
+          title="Toggle Dark / Light Mode"
+          aria-label="Toggle Dark or Light theme"
+        >
+          🌙
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Dynamic Content Container -->
+  <main id="mainContent" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-120px)]">
+    <!-- Rendered dynamically by app.js -->
+  </main>
+
+  <!-- Simple Footer -->
+  <footer class="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] py-6 text-center text-xs text-[var(--text-muted)] transition-colors">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p><strong>Fix It First</strong> · Frontend-only sustainable decision helper. No servers, no tracking, 100% private.</p>
+      <p class="text-[11px] text-[var(--text-faint)]">Replacing is never the default.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
