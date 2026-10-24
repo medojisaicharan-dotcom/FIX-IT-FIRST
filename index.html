@@ -2,66 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fix It First — Think before you throw.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fix It First — The Canvas Protocol</title>
+  <meta name="description" content="The Canvas Protocol Edition: Decision support for damaged items executed purely through Drag-and-Drop Action Zones. No standard action buttons.">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="antialiased">
 
-  <!-- Top Navigation Header -->
-  <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] sticky top-0 z-40 transition-colors">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+  <!-- Header Navigation -->
+  <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] sticky top-0 z-40 transition-colors shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
       
-      <!-- Logo & Tagline -->
-      <a href="#" onclick="location.reload(); return false;" class="flex items-center gap-2.5 text-decoration-none group">
-        <div class="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black text-lg shadow-sm group-hover:scale-105 transition-transform">
-          🌱
+      <!-- Brand & Canvas Protocol Tag -->
+      <a href="#" onclick="location.reload(); return false;" class="flex items-center gap-3 group text-decoration-none">
+        <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/30">
+          🎨
         </div>
         <div>
-          <span class="block font-black text-base md:text-lg leading-tight tracking-tight text-[var(--text-main)]">
-            Fix It First
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="font-black text-base md:text-lg leading-tight tracking-tight text-[var(--text-main)]">
+              Fix It First
+            </span>
+            <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              Canvas Protocol
+            </span>
+          </div>
           <span class="block text-[11px] text-[var(--text-muted)] font-medium">
             Think before you throw.
           </span>
         </div>
       </a>
 
-      <!-- Progress Step Indicator (visible during assessment) -->
-      <nav id="flowProgress" class="hidden md:flex items-center gap-4 text-xs font-semibold" aria-label="Assessment Progress">
-        <div class="flex items-center gap-2">
-          <div class="step-dot" id="dotStep2">1</div>
-          <span class="text-[var(--text-muted)]">Item Context</span>
-        </div>
-        <div class="w-6 h-[2px] bg-[var(--border-subtle)]"></div>
-        <div class="flex items-center gap-2">
-          <div class="step-dot" id="dotStep3">2</div>
-          <span class="text-[var(--text-muted)]">Describe Problem</span>
-        </div>
-        <div class="w-6 h-[2px] bg-[var(--border-subtle)]"></div>
-        <div class="flex items-center gap-2">
-          <div class="step-dot" id="dotStep4">3</div>
-          <span class="text-[var(--text-muted)]">Results & Plan</span>
-        </div>
-      </nav>
+      <!-- Canvas Protocol Live Badge -->
+      <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Drag Cards to Execute Actions</span>
+      </div>
 
-      <!-- Action Toggles (Contrast, Theme) -->
+      <!-- Display Toggles -->
       <div class="flex items-center gap-2">
         <button 
           id="btnContrastToggle" 
-          class="btn-secondary text-xs px-2.5 py-1.5" 
-          title="Toggle High Contrast Mode (Accessibility)"
-          aria-label="Toggle High Contrast Mode"
+          class="px-3 py-1.5 rounded-full border border-[var(--border-medium)] bg-[var(--bg-surface)] text-[var(--text-main)] text-xs font-semibold hover:border-emerald-500 transition cursor-pointer" 
+          title="Toggle High Contrast Mode"
         >
           👁️ <span class="hidden sm:inline text-[11px]">Contrast</span>
         </button>
 
         <button 
           id="btnThemeToggle" 
-          class="btn-secondary text-sm px-2.5 py-1.5" 
-          title="Toggle Dark / Light Mode"
-          aria-label="Toggle Dark or Light theme"
+          class="px-3 py-1.5 rounded-full border border-[var(--border-medium)] bg-[var(--bg-surface)] text-[var(--text-main)] text-xs font-semibold hover:border-emerald-500 transition cursor-pointer" 
+          title="Toggle Dark / Light Theme"
         >
           🌙
         </button>
@@ -70,16 +62,16 @@
     </div>
   </header>
 
-  <!-- Main Dynamic Content Container -->
-  <main id="mainContent" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-120px)]">
-    <!-- Rendered dynamically by app.js -->
+  <!-- Interactive Canvas Workspace -->
+  <main id="mainContent" class="max-w-7xl mx-auto px-4 py-6 min-h-[calc(100vh-120px)]">
+    <!-- Rendered dynamically by app.js (Canvas Protocol) -->
   </main>
 
-  <!-- Simple Footer -->
-  <footer class="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] py-6 text-center text-xs text-[var(--text-muted)] transition-colors">
-    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <p><strong>Fix It First</strong> · Frontend-only sustainable decision helper. No servers, no tracking, 100% private.</p>
-      <p class="text-[11px] text-[var(--text-faint)]">Replacing is never the default.</p>
+  <!-- Canvas Footer -->
+  <footer class="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] py-5 text-center text-xs text-[var(--text-muted)] transition-colors">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p><strong>Fix It First</strong> · The Canvas Protocol Edition. Zero buttons for primary actions.</p>
+      <p class="text-[11px] text-[var(--text-faint)]">Touch and Pointer drag-and-drop enabled.</p>
     </div>
   </footer>
 
