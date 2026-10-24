@@ -673,11 +673,10 @@
     initPointerDragDrop();
   }
 
-  // --- UNIFIED POINTER DRAG & DROP ENGINE (Touch + Mouse) ---
+  // --- UNIFIED FAIL-SAFE POINTER DRAG & DROP ENGINE ---
   function initPointerDragDrop() {
     let currentDraggable = null;
     let dragGhost = null;
-    let startX = 0, startY = 0;
     let offsetX = 0, offsetY = 0;
     let hoveredZone = null;
     let autoScrollInterval = null;
@@ -689,22 +688,50 @@
       }
     }
 
+    function cleanupDrag() {
+      stopAutoScroll();
+      document.querySelectorAll('.is-dragging').forEach(g => g.remove());
+      document.querySelectorAll('.action-zone.drag-active').forEach(z => z.classList.remove('drag-active'));
+      document.querySelectorAll('.draggable-card, .drag-modifier-chip').forEach(c => c.style.opacity = '1');
+      dragGhost = null;
+      currentDraggable = null;
+      hoveredZone = null;
+    }
+
+    // Fail-safe collision detection using bounding boxes (immune to pointer-events bugs)
+    function getIntersectingZone(clientX, clientY) {
+      const zones = document.querySelectorAll('.action-zone');
+      for (const zone of zones) {
+        const r = zone.getBoundingClientRect();
+        // Generous 15px magnetic buffer around drop zones
+        if (
+          clientX >= r.left - 15 &&
+          clientX <= r.right + 15 &&
+          clientY >= r.top - 15 &&
+          clientY <= r.bottom + 15
+        ) {
+          return zone;
+        }
+      }
+      return null;
+    }
+
+    // Attach listeners to all draggable items & modifiers
     const draggables = document.querySelectorAll('.draggable-card, .drag-modifier-chip');
 
     draggables.forEach(el => {
       el.addEventListener('pointerdown', (e) => {
-        // Prevent default text selection
+        // Prevent default touch scrolling / callouts
         e.preventDefault();
 
+        cleanupDrag();
         currentDraggable = el;
         const cardType = el.getAttribute('data-card-type');
         const rect = el.getBoundingClientRect();
-        startX = rect.left;
-        startY = rect.top;
         offsetX = e.clientX - rect.left;
         offsetY = e.clientY - rect.top;
 
-        // Auto-scroll Diagnostic Chamber into view on drag start if offscreen
+        // Auto-scroll Diagnostic Chamber into view when dragging an item card
         if (cardType === 'item' && !state.activeItem) {
           const chamber = document.getElementById('zoneDiagnostic');
           if (chamber) {
@@ -724,14 +751,11 @@
         dragGhost.style.width = `${rect.width}px`;
         dragGhost.style.pointerEvents = 'none';
         dragGhost.style.zIndex = '9999';
+        // Ensure all children also ignore pointer
+        dragGhost.querySelectorAll('*').forEach(c => { c.style.pointerEvents = 'none'; });
         document.body.appendChild(dragGhost);
 
         el.style.opacity = '0.35';
-
-        // Set pointer capture
-        try {
-          el.setPointerCapture(e.pointerId);
-        } catch (_) {}
 
         // Pointer move handler with Edge Auto-Scrolling
         const onPointerMove = (moveEvent) => {
@@ -747,16 +771,15 @@
           const edgeThreshold = 90;
 
           if (clientY > viewH - edgeThreshold) {
-            const speed = Math.min(22, Math.max(6, Math.round((clientY - (viewH - edgeThreshold)) / 2)));
+            const speed = Math.min(24, Math.max(6, Math.round((clientY - (viewH - edgeThreshold)) / 2)));
             window.scrollBy(0, speed);
           } else if (clientY < edgeThreshold) {
-            const speed = Math.min(22, Math.max(6, Math.round((edgeThreshold - clientY) / 2)));
+            const speed = Math.min(24, Math.max(6, Math.round((edgeThreshold - clientY) / 2)));
             window.scrollBy(0, -speed);
           }
 
-          // Detect action zone underneath pointer
-          const elemBelow = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
-          const zone = elemBelow ? elemBelow.closest('.action-zone') : null;
+          // Robust bounding-box collision detection
+          const zone = getIntersectingZone(moveEvent.clientX, moveEvent.clientY);
 
           if (hoveredZone && hoveredZone !== zone) {
             hoveredZone.classList.remove('drag-active');
@@ -772,32 +795,36 @@
 
         // Pointer up handler
         const onPointerUp = (upEvent) => {
-          document.removeEventListener('pointermove', onPointerMove);
-          document.removeEventListener('pointerup', onPointerUp);
-          stopAutoScroll();
+          window.removeEventListener('pointermove', onPointerMove);
+          window.removeEventListener('pointerup', onPointerUp);
+          window.removeEventListener('pointercancel', onPointerCancel);
 
-          if (currentDraggable) {
-            currentDraggable.style.opacity = '1';
+          const droppedDraggable = currentDraggable;
+          const droppedZone = hoveredZone || getIntersectingZone(upEvent.clientX, upEvent.clientY);
+
+          cleanupDrag();
+
+          if (droppedDraggable && droppedZone) {
+            handleDropAction(droppedDraggable, droppedZone);
           }
-
-          if (dragGhost) {
-            dragGhost.remove();
-            dragGhost = null;
-          }
-
-          if (hoveredZone) {
-            hoveredZone.classList.remove('drag-active');
-            handleDropAction(currentDraggable, hoveredZone);
-            hoveredZone = null;
-          }
-
-          currentDraggable = null;
         };
 
-        document.addEventListener('pointermove', onPointerMove);
-        document.addEventListener('pointerup', onPointerUp);
+        // Pointer cancel handler (Android palm rejection / gestures)
+        const onPointerCancel = () => {
+          window.removeEventListener('pointermove', onPointerMove);
+          window.removeEventListener('pointerup', onPointerUp);
+          window.removeEventListener('pointercancel', onPointerCancel);
+          cleanupDrag();
+        };
+
+        window.addEventListener('pointermove', onPointerMove, { passive: false });
+        window.addEventListener('pointerup', onPointerUp, { once: true });
+        window.addEventListener('pointercancel', onPointerCancel, { once: true });
       });
     });
+
+    // Safety listener: window blur clears any stuck ghost
+    window.addEventListener('blur', cleanupDrag);
   }
 
   // --- DROP ACTION DISPATCHER ---
@@ -827,7 +854,6 @@
           renderCanvas();
         }
       } else if (cardType === 'modifier') {
-        // Drop modifier token onto active item
         if (!state.activeItem) {
           showToast('⚠️ Drop an item into the Chamber first!');
           return;
@@ -838,26 +864,53 @@
 
     // 2. Drop into Decision Portals (Activate specific plan)
     else if (zoneAction === 'select-plan') {
+      const planKey = targetZone.getAttribute('data-plan-key');
+
+      // Direct Drop from Card Deck support:
+      if (cardType === 'item') {
+        const itemId = draggedEl.getAttribute('data-item-id');
+        const selectedItem = (itemId === 'custom-item') ? Object.assign({}, state.stagedCustomItem) : PRESET_CARDS.find(c => c.id === itemId);
+        if (selectedItem) {
+          state.activeItem = selectedItem;
+          state.evaluation = evaluateItem(selectedItem);
+          state.activeActionPlan = state.evaluation.options[planKey];
+          showToast(`🎯 ${selectedItem.name} ➔ ${state.activeActionPlan.name} Activated!`);
+          renderCanvas();
+          setTimeout(() => {
+            document.getElementById('actionPlanContainer')?.scrollIntoView({ behavior: 'smooth' });
+          }, 60);
+          return;
+        }
+      }
+
       if (!state.evaluation) {
-        showToast('⚠️ Drop an item into the Diagnostic Chamber first!');
+        showToast('⚠️ Drop an item into the Chamber first!');
         return;
       }
-      const planKey = targetZone.getAttribute('data-plan-key');
+
       state.activeActionPlan = state.evaluation.options[planKey];
       showToast(`🎯 Activated Plan: ${state.activeActionPlan.name}`);
       renderCanvas();
       
-      // Smooth scroll to action plan
       setTimeout(() => {
         const planEl = document.getElementById('actionPlanContainer');
         if (planEl) planEl.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
+      }, 60);
     }
 
     // 3. Drop into Favorites Stash
     else if (zoneAction === 'favorite') {
+      if (cardType === 'item') {
+        const itemId = draggedEl.getAttribute('data-item-id');
+        const selectedItem = (itemId === 'custom-item') ? Object.assign({}, state.stagedCustomItem) : PRESET_CARDS.find(c => c.id === itemId);
+        if (selectedItem) {
+          toggleFavorite(selectedItem);
+          renderCanvas();
+          return;
+        }
+      }
       if (!state.activeItem) {
-        showToast('⚠️ No active item to favorite!');
+        showToast('⚠️ No item to favorite!');
         return;
       }
       toggleFavorite(state.activeItem);
@@ -866,6 +919,18 @@
 
     // 4. Drop into Comparison Arena
     else if (zoneAction === 'compare') {
+      if (cardType === 'item') {
+        const itemId = draggedEl.getAttribute('data-item-id');
+        const selectedItem = (itemId === 'custom-item') ? Object.assign({}, state.stagedCustomItem) : PRESET_CARDS.find(c => c.id === itemId);
+        if (selectedItem) {
+          state.activeItem = selectedItem;
+          state.evaluation = evaluateItem(selectedItem);
+          state.showComparison = true;
+          showToast('⚖️ Comparison Matrix Opened!');
+          renderCanvas();
+          return;
+        }
+      }
       if (!state.evaluation) {
         showToast('⚠️ Drop an item to analyze before comparing!');
         return;
